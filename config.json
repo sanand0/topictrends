@@ -1,0 +1,49 @@
+{
+  "demos": [
+    {
+      "name": "Quantitative Biology - Others",
+      "icon": "streamline:bacteria-virus-cells-biology",
+      "file": "q-bio.OT.csv",
+      "topics": [
+        "Pandemic Influenza and COVID-19 Dynamics",
+        "Global Bioimage Data Sharing",
+        "Microfluidics and Lab-on-a-Chip Technologies",
+        "Stochastic and Mathematical Models in Biology",
+        "Machine Learning in Cancer Diagnosis and Treatment",
+        "Plant Extracts and Agricultural Applications",
+        "Genetic Code Mathematical Representations",
+        "Harmonic and Algorithmic Views of Genetic Code"
+      ]
+    },
+    {
+      "name": "Quantitative Finance - Portfolio Management",
+      "icon": "hugeicons:apple-stocks",
+      "file": "q-fin.PM.csv",
+      "topics": [
+        "Life Insurance and Annuities Optimization",
+        "Kelly Criterion and Market Arbitrage",
+        "Deep Reinforcement Learning in Portfolio Management",
+        "Stock Market Correlations and Cryptocurrency Dynamics",
+        "Utility Maximization in Incomplete Markets",
+        "Robust Portfolio Optimization and Covariance Estimation",
+        "Stochastic Control and Risk-Sensitive Asset Management",
+        "Transaction Costs and Optimal Trade Execution"
+      ]
+    },
+    {
+      "name": "Statistics - Others",
+      "icon": "icomoon-free:stats-bars2",
+      "file": "stat.OT.csv",
+      "topics": [
+        "Advanced Regression and Causal Inference",
+        "Statistical Significance and Scientific Reproducibility",
+        "Foundations of Subjective Probability",
+        "Undergraduate Data Science Education",
+        "Quasi-Stationary Distributions and Random Matrix Theory",
+        "Sports Analytics and Strategic Decision Making",
+        "Environmental Impacts and Epidemiological Modeling",
+        "Topological Data Analysis and Dimensionality Reduction"
+      ]
+    }
+  ]
+}
