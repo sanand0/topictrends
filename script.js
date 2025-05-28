@@ -1,6 +1,9 @@
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+import { asyncLLM } from "https://cdn.jsdelivr.net/npm/asyncllm@2";
+import { Marked } from "https://cdn.jsdelivr.net/npm/marked@13/+esm";
 
+const marked = new Marked();
 const demos = document.querySelector("#demos");
 const results = document.querySelector("#results");
 const statusContainer = document.getElementById("status-container");
@@ -12,6 +15,8 @@ let currentData = null;
 let currentTopics = null;
 let currentSimilarity = null;
 let similarityCutoff = 0.3;
+let currentYears = [];
+let currentChartData = null;
 
 const loading = /* html */ `
   <div class="d-flex justify-content-center align-items-center">
@@ -51,6 +56,10 @@ demos.addEventListener("click", (e) => {
     currentDemo = config.demos[demoIndex];
     loadDemo(demo.dataset.file, demoIndex);
     chartContainer.classList.add("d-none");
+
+    // Clear interpretation when a new demo is selected
+    document.getElementById("interpretation").classList.add("d-none");
+    document.getElementById("interpretation-content").innerHTML = "";
   }
 });
 
@@ -114,7 +123,7 @@ function createDemoUI(data, minYear, maxYear, topics) {
 
           <div class="mb-3">
             <label for="topics-textarea" class="form-label">Topics (one per line):</label>
-            <textarea class="form-control" id="topics-textarea" rows="5">${topics.join("\n")}</textarea>
+            <textarea class="form-control" id="topics-textarea" rows="7">${topics.join("\n")}</textarea>
             <div class="form-text">Edit topics as needed, then click Classify to analyze the data.</div>
           </div>
 
@@ -216,6 +225,7 @@ function updateVisualization() {
   // Group by year and topic
   const yearTopicCounts = {};
   const years = [...new Set(docTopics.map((d) => d.year))].sort();
+  currentYears = years;
 
   // Initialize counts
   years.forEach((year) => {
@@ -238,15 +248,22 @@ function updateVisualization() {
       year,
       count: yearTopicCounts[year][topic],
       docs: docTopics.filter((d) => d.year === year && d.topicName === topic),
-      topic
+      topic,
     })),
   }));
 
   // Filter out unclassified documents from the chart data
   // We don't need to add an 'Unclassified' category
 
+  // Save chart data for interpretation
+  currentChartData = chartData;
+
   // Draw chart
   drawChart(chartData, years);
+
+  // Set default interpretation prompt
+  const promptTextarea = document.getElementById("interpretation-prompt");
+  promptTextarea.value = `Here is the trend of topics from arXiv papers for in the ${currentDemo.name} category over time. Interpret the trend. Explain what topics rising, falling, etc. Based on this recommend actions for publishers, researchers, and policymakers. Use concise, simple, language.`;
 }
 
 /**
@@ -517,6 +534,86 @@ function showError(message) {
       <strong>Error:</strong> ${message}
     </div>
   `;
+}
+
+// Add event listener for the interpret button
+document.getElementById("interpret-button")?.addEventListener("click", interpretTrends);
+
+/**
+ * Interprets the current trend data using an LLM
+ */
+async function interpretTrends() {
+  if (!currentChartData || currentChartData.length === 0) {
+    showError("No trend data available to interpret");
+    return;
+  }
+
+  // Get the prompt from the textarea
+  const promptTextarea = document.getElementById("interpretation-prompt");
+  const systemPrompt = promptTextarea.value.trim();
+
+  if (!systemPrompt) {
+    showError("Please enter a prompt for interpretation");
+    return;
+  }
+
+  // Create text representation of the trend data
+  const trendText = createTrendText(currentChartData, currentYears);
+
+  // Show the interpretation section and set loading state
+  const interpretationDiv = document.getElementById("interpretation");
+  const interpretationContent = document.getElementById("interpretation-content");
+  interpretationDiv.classList.remove("d-none");
+  interpretationContent.innerHTML = `<div class="d-flex align-items-center">
+    <div class="spinner-border spinner-border-sm me-2" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <span>Generating interpretation...</span>
+  </div>`;
+
+  try {
+    // Call the LLM API
+    for await (const { content } of asyncLLM("https://llmfoundry.straive.com/openai/v1/chat/completions", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-4.1-mini",
+        stream: true,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: trendText },
+        ],
+      }),
+    })) {
+      if (content) interpretationContent.innerHTML = marked.parse(content);
+    }
+  } catch (error) {
+    interpretationContent.innerHTML = `<div class="alert alert-danger">
+      <strong>Error:</strong> Failed to generate interpretation: ${error.message}
+    </div>`;
+  }
+}
+
+/**
+ * Creates a text representation of the trend data
+ * @param {Array} chartData - Chart data with topic trends
+ * @param {Array} years - Array of years
+ * @returns {string} - Text representation of trends
+ */
+function createTrendText(chartData, years) {
+  if (!chartData || chartData.length === 0 || !years || years.length === 0) {
+    return "No trend data available";
+  }
+
+  let text = `Topic trends from ${years[0]} to ${years[years.length - 1]}\n\n`;
+
+  chartData.forEach((topicData) => {
+    const values = topicData.values.map((v) => v.count);
+    text += `${topicData.topic}: ${values.join(", ")}\n`;
+  });
+
+  return text;
 }
 
 init();
